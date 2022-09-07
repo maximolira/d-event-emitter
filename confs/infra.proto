@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+message ElectionsOutputMessage {
+    string id = 1;
+    string source = 2;
+    string vote = 3;
+}
+
+message ElectionsInputMessage {
+    string id = 1;
+    string source = 2;
+}
+
+message RefreshInputMessage {
+    string id = 1;
+    string source = 2;
+    string leader = 3;
+}
+
+message RefreshOutputMessage {
+    string id = 1;
+    string source = 2;
+}
+
+message EmittedInputMessage {
+    string id = 1;
+    string source = 2;
+    string hash = 3;
+}
+
+message EmittedOutputMessage {
+    string id = 1;
+    string source = 2;
+    string status = 3;
+}
+
+
+service DEmitterGRPCService {
+    rpc elections (ElectionsInputMessage)  returns (ElectionsOutputMessage) {}
+    rpc refresh (RefreshInputMessage) returns (RefreshOutputMessage) {}
+    rpc emit (EmittedInputMessage) returns (EmittedOutputMessage) {}
+    rpc listen (EmittedInputMessage) returns (EmittedOutputMessage) {}
+}
