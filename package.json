@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/%3Cusername%3E/d-event-emitter.git"
+    "url": "git+https://github.com/maximolira/d-event-emitter.git"
   },
   "keywords": [
     "event-emitter",
@@ -18,9 +18,9 @@
   "author": "maximolira",
   "license": "Apache License 2.0",
   "bugs": {
-    "url": "https://github.com/%3Cusername%3E/d-event-emitter/issues"
+    "url": "https://github.com/maximolira/d-event-emitter/issues"
   },
-  "homepage": "https://github.com/%3Cusername%3E/d-event-emitter#readme",
+  "homepage": "https://github.com/maximolira/d-event-emitter#readme",
   "dependencies": {
     "@grpc/grpc-js": "^1.6.12",
     "@grpc/proto-loader": "^0.7.2",
