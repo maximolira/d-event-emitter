@@ -1,2 +1,57 @@
 # d-event-emitter
 event emitter using interprocess network layer
+
+
+## Basic configuration
+
+  Details of the infrastructure must be provided, and the corresponding security certificates
+
+
+```js
+//array with the infrastructure configuration
+let infraarr = [{
+    name: "test1",  //name of the worker
+    host: "127.0.0.1", //host
+    port: 65000, //port
+    eligible: true, //if true worker can act as leader
+    startleader: true // when start there must be only one :)
+},{
+    name: "test2",
+    host: "127.0.0.1",
+    port: 65001,
+    eligible: true,
+    startleader: false
+}]
+
+//RSA security certificates, these must be shared by all clients
+let pub = fs.readFileSync("./certificates/public.pem") //all worker need this
+let prv = fs.readFileSync("./certificates/private.pem") //all worker need this
+
+let emitter = new DEmmiter({
+    name: argv.name,
+    infra: infraarr,
+    RSApublic: pub,
+    RSAprivate: prv
+})
+```
+
+
+## Examples
+
+  Basic usage examples are detailed below. Arguments passed to the event must be serializable values. Other usage examples are located in the examples folder
+
+```js
+//setting a listener
+emitter.on("myEvent",(args)=>{
+    console.log("listener args::"+JSON.stringify(args))
+})
+
+emitter.emit("myEvent",{test:"qwerty",date: new Date().getTime()}).catch((error)=>{
+    console.log("no other clients?")
+})
+
+```
+
+## License
+
+  [Apache 2.0](LICENSE)
