@@ -9,7 +9,7 @@ process.setMaxListeners(0);
 log4js.configure({
     appenders: { 
       main:
-        { type: "stdout", filename: "./logs/main.log" },
+        { type: "stdout" },
     },
     categories: { 
       default: { appenders: ["main"], level: "debug" },
@@ -61,4 +61,8 @@ setInterval(()=>{
     }
 },10000)
 
+
+emitter.statusEmitter().on(argv.name+".*",(event) =>{
+    logger.debug(event);
+});
 

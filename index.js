@@ -4,6 +4,7 @@ const protoLoader = require("@grpc/proto-loader");
 const rs = require('jsrsasign');
 const log4js = require("log4js")
 const PROTO_PATH = __dirname + "/confs/infra.proto";
+const EventEmitter2 = require('eventemitter2');
 const DEmitterService = require("./core/service")
 
 class DEmmiter {
@@ -19,6 +20,15 @@ class DEmmiter {
             },
         });        
         this.logger = log4js.getLogger();
+        this.eventEmitter = new EventEmitter2({
+            wildcard: true,
+            delimiter: '.', 
+            newListener: false, 
+            removeListener: false, 
+            maxListeners: 10,
+            verboseMemoryLeak: false,
+            ignoreErrors: false
+        });
         this.infrastructure = params.infra
         this.name = params.name
         this.RSApublic = params.RSApublic
@@ -35,7 +45,7 @@ class DEmmiter {
         this.server = new grpc.Server();
         var packageDef = protoLoader.loadSync(PROTO_PATH, this.loaderOptions);
         const grpcObj = grpc.loadPackageDefinition(packageDef);
-        this.server.addService(grpcObj.DEmitterGRPCService.service, new DEmitterService(this,this.logger) )
+        this.server.addService(grpcObj.DEmitterGRPCService.service, new DEmitterService(this) )
         
         this.server.bindAsync(this.owner.host+':'+this.owner.port, grpc.ServerCredentials.createInsecure(),(error,port)=>{ 
             if(error) throw error
@@ -57,11 +67,22 @@ class DEmmiter {
             var client = new DEmitterGRPCService(cli.host+":"+cli.port,grpc.credentials.createInsecure());
             return () => new Promise((resolve,reject)=>{
                 client.elections({ _id : new Date().getTime(), source : this.name }, (error, note) => {
+                    
+                    let name = this.name+".election"
+                    let eventObject = {
+                        eventName: name,
+                        createdAt: new Date().getTime(),
+                        target: cli.name,
+                        source: this.name
+                    };
                     if (error) {
-                        this.logger.debug("error when call for election:::"+cli.name+"::offline")
+                        eventObject["descr"]="error when call for election.";
+                        this.eventEmitter.emit(name,eventObject)
                         resolve({source:"",vote:""})
                     } else {
-                        this.logger.debug("called for election:::"+cli.name+"::completed")
+                        eventObject["descr"]="called for election.";
+                        let name = this.name+".election"
+                        this.eventEmitter.emit(name,eventObject)
                         resolve(note)
                     }
                 })
@@ -81,9 +102,7 @@ class DEmmiter {
                         } else {
                             counter[votefor] = 1
                         }    
-                    } catch (error) {
-                        this.logger.error(error)
-                    }
+                    } catch (error) {}
                 }
             })
             let keys = Object.keys(counter)
@@ -101,11 +120,20 @@ class DEmmiter {
                     let pbKey = KEYUTIL.getKey(this.RSApublic.toString());
                     let encrypted = KJUR.crypto.Cipher.encrypt(newleader, pbKey, 'RSA');
                     client.refresh({ _id : new Date().getTime(), source : this.name, leader: encrypted },(error, note) => {
+                        let eventObject = {
+                            eventName: this.name+".refresh",
+                            descr:"called for election result.",
+                            createdAt: new Date().getTime(),
+                            target: cli.name,
+                            source: this.name
+                        };
                         if(error) {
-                            this.logger.debug("error when call for refresh:::"+cli.name+"::offline")
+                            eventObject["descr"] = "error when call for refresh"
+                            this.eventEmitter.emit(this.name+".refresh",eventObject)
                             resolve(cli)
                         } else {
-                            this.logger.debug("refreshed:::"+cli.name+"::complete")
+                            eventObject["descr"] = "refreshed"
+                            this.eventEmitter.emit(this.name+".refresh",eventObject)
                             resolve(cli)
                         }
                     })
@@ -194,6 +222,9 @@ class DEmmiter {
             listener1(args)
         };
         this.addListener(eventName,listener)
+    }
+    statusEmitter(){
+        return this.eventEmitter
     }
 }
 
