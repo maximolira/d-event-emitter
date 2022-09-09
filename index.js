@@ -2,12 +2,23 @@ const sequential = require('promise-sequential');
 const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
 const rs = require('jsrsasign');
+const log4js = require("log4js")
 const PROTO_PATH = __dirname + "/confs/infra.proto";
 const DEmitterService = require("./core/service")
 
 class DEmmiter {
     constructor(params){
         if(!params) throw new Error("params not defined")
+        log4js.configure({
+            appenders: { 
+              main:
+                { type: "stdout" },
+            },
+            categories: { 
+              default: { appenders: ["main"], level: params.level || 'error' },
+            },
+        });        
+        this.logger = log4js.getLogger();
         this.infrastructure = params.infra
         this.name = params.name
         this.RSApublic = params.RSApublic
@@ -24,7 +35,7 @@ class DEmmiter {
         this.server = new grpc.Server();
         var packageDef = protoLoader.loadSync(PROTO_PATH, this.loaderOptions);
         const grpcObj = grpc.loadPackageDefinition(packageDef);
-        this.server.addService(grpcObj.DEmitterGRPCService.service, new DEmitterService(this) )
+        this.server.addService(grpcObj.DEmitterGRPCService.service, new DEmitterService(this,this.logger) )
         
         this.server.bindAsync(this.owner.host+':'+this.owner.port, grpc.ServerCredentials.createInsecure(),(error,port)=>{ 
             if(error) throw error
@@ -46,8 +57,13 @@ class DEmmiter {
             var client = new DEmitterGRPCService(cli.host+":"+cli.port,grpc.credentials.createInsecure());
             return () => new Promise((resolve,reject)=>{
                 client.elections({ _id : new Date().getTime(), source : this.name }, (error, note) => {
-                    if (error) reject(error)
-                    resolve(note)
+                    if (error) {
+                        this.logger.debug("error when call for election:::"+cli.name+"::offline")
+                        resolve({source:"",vote:""})
+                    } else {
+                        this.logger.debug("called for election:::"+cli.name+"::completed")
+                        resolve(note)
+                    }
                 })
             })
         })
@@ -66,7 +82,7 @@ class DEmmiter {
                             counter[votefor] = 1
                         }    
                     } catch (error) {
-                        console.error(error)
+                        this.logger.error(error)
                     }
                 }
             })
@@ -85,8 +101,13 @@ class DEmmiter {
                     let pbKey = KEYUTIL.getKey(this.RSApublic.toString());
                     let encrypted = KJUR.crypto.Cipher.encrypt(newleader, pbKey, 'RSA');
                     client.refresh({ _id : new Date().getTime(), source : this.name, leader: encrypted },(error, note) => {
-                        if(error) reject(error)
-                        resolve(cli)
+                        if(error) {
+                            this.logger.debug("error when call for refresh:::"+cli.name+"::offline")
+                            resolve(cli)
+                        } else {
+                            this.logger.debug("refreshed:::"+cli.name+"::complete")
+                            resolve(cli)
+                        }
                     })
                 })
             }) 
@@ -146,10 +167,15 @@ class DEmmiter {
             let pbKey = KEYUTIL.getKey(this.RSApublic.toString());
             let encrypted = KJUR.crypto.Cipher.encrypt(JSON.stringify(obj), pbKey, 'RSA');
     
+            
+
             client.emit({ _id : new Date().getTime(), source : this.name, hash: encrypted },(error, note) => {
-                if(error) 
+                if(error) {
+                    this.logger.debug(leader)
                     reject(error)
-                resolve(note)
+                } else {
+                    resolve(note)
+                }
             })
         })
         

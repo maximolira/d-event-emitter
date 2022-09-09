@@ -1,6 +1,11 @@
 # d-event-emitter
 event emitter using interprocess network layer
 
+## Instalation
+
+```
+npm install d-event-emitter
+```
 
 ## Basic configuration
 
@@ -8,6 +13,9 @@ event emitter using interprocess network layer
 
 
 ```js
+
+const DEmmiter = require("d-event-emitter")
+
 //array with the infrastructure configuration
 let infraarr = [{
     name: "test1",  //name of the worker
@@ -31,7 +39,8 @@ let emitter = new DEmmiter({
     name: argv.name,
     infra: infraarr,
     RSApublic: pub,
-    RSAprivate: prv
+    RSAprivate: prv,
+    level: "debug" //optional parameter for debugging, default value: error (log4js)
 })
 ```
 

@@ -37,11 +37,13 @@ let infraarr = [{
 let pub = fs.readFileSync("./certificates/public.pem") //all worker need this
 let prv = fs.readFileSync("./certificates/private.pem") //all worker need this
 
+
 let emitter = new DEmmiter({
     name: argv.name,
     infra: infraarr,
     RSApublic: pub,
-    RSAprivate: prv
+    RSAprivate: prv,
+    level: "debug"
 })
 
 //setting a listener

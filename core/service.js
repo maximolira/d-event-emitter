@@ -4,8 +4,9 @@ const PROTO_PATH = __dirname + "/../confs/infra.proto";
 const rs = require('jsrsasign');
 
 class DEmitterService {
-    constructor(root,){
+    constructor(root,logger){
         this.self = root
+        this.logger = logger
     }
     listen(caller,callback){
         let KJUR = rs.KJUR
@@ -30,10 +31,18 @@ class DEmitterService {
         this.self.infrastructure.forEach((cli)=>{
             var client = new DEmitterGRPCService(cli.host+":"+cli.port,grpc.credentials.createInsecure());
             client.listen(caller.request,(error, note) => {
-                if(error) throw error
-        
+                if(error) {
+                    this.logger.debug("error when emitted:::"+cli.name+"::offline")
+                } else {
+                    this.logger.debug("emitted:::"+cli.name+"::complete")
+                }
             })
         })
+        callback(null,{
+            _id : new Date().getTime(),
+            source : this.self.name,
+            status : "ok"
+        });
     }
     refresh(caller,callback){
         let KJUR = rs.KJUR
@@ -67,6 +76,7 @@ class DEmitterService {
         let KEYUTIL = rs.KEYUTIL
         let pbKey = KEYUTIL.getKey(this.self.RSApublic.toString());
         let encrypted = KJUR.crypto.Cipher.encrypt(vote, pbKey, 'RSA');
+        this.logger.debug("vote:::"+this.self.name+"::complete")
         callback(null,{
             _id : new Date().getTime(),
             source : this.self.name,
