@@ -63,4 +63,6 @@ emitter.emit("myEvent",{test:"qwerty",date: new Date().getTime()}).catch((error)
 
 ## License
 
+<a href="https://www.buymeacoffee.com/maximolira" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+
   [Apache 2.0](LICENSE)

@@ -1,0 +1,13 @@
+[{
+    "name": "front-controller",
+    "host": "10.5.0.5",
+    "port": 65000, 
+    "eligible": true, 
+    "startleader": true 
+},{
+    "name": "worker-users",
+    "host": "10.5.0.6",
+    "port": 65001,
+    "eligible": true,
+    "startleader": false
+}]
