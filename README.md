@@ -1,7 +1,7 @@
 # d-event-emitter
 event emitter using interprocess network layer
 
-## Instalation
+## Installation
 
 ```
 npm install d-event-emitter
