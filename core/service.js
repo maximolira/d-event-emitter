@@ -14,7 +14,14 @@ class DEmitterService {
         try {
             let jsonStr = KJUR.crypto.Cipher.decrypt(caller.request.hash, pvKey, 'RSA');
             let obj = JSON.parse(jsonStr)
-            let affecteds = this.self.listeners.filter((list)=>{ return list.name == obj.eventName })
+            let affecteds = this.self.listeners.filter((list)=>{ 
+                if(list.name.endsWith("*")){
+                    let tmplistv = list.name.substring(0,list.name.length - 1);
+                    return obj.eventName.startsWith(tmplistv);
+                } else {
+                    return list.name == obj.eventName 
+                }
+            })
             affecteds.forEach((callback1)=>{
                 let args = obj.encodedArgs
                 callback1.listener(args)

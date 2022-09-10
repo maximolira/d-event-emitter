@@ -61,6 +61,23 @@ emitter.emit("myEvent",{test:"qwerty",date: new Date().getTime()}).catch((error)
 
 ```
 
+  Wildcard character ("*") support for namespace in event listening
+
+```js
+//setting a listener
+emitter.on("myNamespace.MyEvent1",(args)=>{
+    console.log("listener event1 args::"+JSON.stringify(args))
+})
+
+emitter.on("myNamespace.*",(args)=>{
+    console.log("listener all events args::"+JSON.stringify(args))
+})
+
+emitter.emit("myNamespace.MyEvent1",{test:"event1",date: new Date().getTime()})
+emitter.emit("myNamespace.MyEvent2",{test:"event2",date: new Date().getTime()})
+
+```
+
 ## License
 
 <a href="https://www.buymeacoffee.com/maximolira" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>

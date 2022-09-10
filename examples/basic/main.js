@@ -47,22 +47,29 @@ let emitter = new DEmmiter({
 })
 
 //setting a listener
-emitter.on("myEvent",(args)=>{
-    logger.debug("listener args::"+JSON.stringify(args))
+emitter.on("myNamespace.myEvent1",(args)=>{
+    logger.debug("listener event 1 args::"+JSON.stringify(args))
 })
+
+//setting a listener
+emitter.on("myNamespace.*",(args)=>{
+    logger.debug("listener all events args::"+JSON.stringify(args))
+})
+
 
 //emit event only if worker is not the leader
 setInterval(()=>{
     if(emitter.getLeader().name !== argv.name){
         logger.debug("emit::"+emitter.getLeader().name)
-        emitter.emit("myEvent",{test:"qwerty",date: new Date().getTime()}).catch((error)=>{
-            logger.debug("no other clients?")
-        })
+        emitter.emit("myNamespace.myEvent1",{test:"event1",date: new Date().getTime()})
+        emitter.emit("myNamespace.myEvent2",{test:"event2",date: new Date().getTime()})
     }
 },10000)
 
 
+//local emitter events
+/*
 emitter.statusEmitter().on(argv.name+".*",(event) =>{
     logger.debug(event);
 });
-
+*/
