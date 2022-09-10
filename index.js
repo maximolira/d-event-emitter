@@ -38,6 +38,7 @@ class DEmmiter {
         this.metadataContext = [{
             name: this.name,
             updatedAt: new Date().getTime(),
+            liat:  new Date().getTime(),
             events: {}
         }];
         this.owner = this.infrastructure.filter((item)=>{ return item.name == this.name })[0]
@@ -70,6 +71,13 @@ class DEmmiter {
         },params.heartbeatTime)
     }
     hearthbeat(){
+        let metadata = this.metadataContext.filter((item)=> { return item.name == this.name } )[0]
+        if(metadata){
+            let actual = new Date().getTime()
+            if((metadata.liat + this.electionTime[1]) < actual){
+                this.election()
+            }
+        }
         if(this.leader == this.name){
             let KJUR = rs.KJUR
             let KEYUTIL = rs.KEYUTIL
@@ -113,7 +121,7 @@ class DEmmiter {
                     
                 })
             })
-        }
+        } 
     }
     election(){
         let clients = this.infrastructure.filter((item)=>{ return item.eligible })
@@ -122,8 +130,7 @@ class DEmmiter {
         let arrs = clients.map((cli)=>{
             var client = new DEmitterGRPCService(cli.host+":"+cli.port,grpc.credentials.createInsecure());
             return () => new Promise((resolve,reject)=>{
-                client.elections({ _id : new Date().getTime(), source : this.name }, (error, note) => {
-                    
+                client.elections({ _id : new Date().getTime(), source : this.name }, (error, note) => {   
                     let name = this.name+".election"
                     let eventObject = {
                         eventName: name,
@@ -153,10 +160,14 @@ class DEmmiter {
                 if(item.vote){
                     try {
                         let votefor = KJUR.crypto.Cipher.decrypt(item.vote, pvKey, 'RSA');
+                        let factor = 1;
+                        if(votefor == this.leader){
+                            factor = 0.5;
+                        }
                         if(counter[votefor]){
-                            counter[votefor] ++
+                            counter[votefor] = counter[votefor]  + (1 * factor)
                         } else {
-                            counter[votefor] = 1
+                            counter[votefor] = (1 * factor)
                         }    
                     } catch (error) {}
                 }
@@ -205,9 +216,14 @@ class DEmmiter {
         })
     }
     getLeader(){
-        return this.infrastructure.filter((item)=>{
+        let leader = this.infrastructure.filter((item)=>{
             return item.name == this.leader
         })[0]
+        if(leader){
+            return leader
+        } else {
+            return { name : ""}
+        }
     }
     addListener(eventName, listener1){
         let exist = false
@@ -231,6 +247,7 @@ class DEmmiter {
                 if(item.name == this.name){
                     this.metadataContext[index].events = detail
                     this.metadataContext[index].updatedAt = new Date().getTime()
+                    this.metadataContext[index].liat = new Date().getTime()
                 }
             })
 
@@ -256,6 +273,7 @@ class DEmmiter {
             if(item.name == this.name){
                 this.metadataContext[index].events = detail
                 this.metadataContext[index].updatedAt = new Date().getTime()
+                this.metadataContext[index].liat = new Date().getTime()
             }
         })
     }
@@ -279,6 +297,7 @@ class DEmmiter {
             if(item.name == this.name){
                 this.metadataContext[index].events = detail
                 this.metadataContext[index].updatedAt = new Date().getTime()
+                this.metadataContext[index].liat = new Date().getTime()
             }
         })
     }
@@ -287,24 +306,26 @@ class DEmmiter {
             var packageDef = protoLoader.loadSync(PROTO_PATH, this.loaderOptions);
             const DEmitterGRPCService = grpc.loadPackageDefinition(packageDef).DEmitterGRPCService
             let leader = this.infrastructure.filter((item)=>{ return item.name == this.leader })[0]
-            var client = new DEmitterGRPCService(leader.host+":"+leader.port,grpc.credentials.createInsecure());
+            if(!leader){
+                this.election()
+                reject("not leader?")
+            } else {
+                var client = new DEmitterGRPCService(leader.host+":"+leader.port,grpc.credentials.createInsecure());
     
-            let obj = { eventName:eventname, encodedArgs: args }
-            let KJUR = rs.KJUR
-            let KEYUTIL = rs.KEYUTIL
-            let pbKey = KEYUTIL.getKey(this.RSApublic.toString());
-            let encrypted = KJUR.crypto.Cipher.encrypt(JSON.stringify(obj), pbKey, 'RSA');
-    
-            
-
-            client.emit({ _id : new Date().getTime(), source : this.name, hash: encrypted },(error, note) => {
-                if(error) {
-                    this.logger.debug(leader)
-                    reject(error)
-                } else {
-                    resolve(note)
-                }
-            })
+                let obj = { eventName:eventname, encodedArgs: args }
+                let KJUR = rs.KJUR
+                let KEYUTIL = rs.KEYUTIL
+                let pbKey = KEYUTIL.getKey(this.RSApublic.toString());
+                let encrypted = KJUR.crypto.Cipher.encrypt(JSON.stringify(obj), pbKey, 'RSA');
+                client.emit({ _id : new Date().getTime(), source : this.name, hash: encrypted },(error, note) => {
+                    if(error) {
+                        this.logger.debug(leader)
+                        reject(error)
+                    } else {
+                        resolve(note)
+                    }
+                })
+            }
         })
         
     }

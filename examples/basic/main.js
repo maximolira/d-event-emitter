@@ -64,8 +64,8 @@ emitter.on("myNamespace.*",(args)=>{
 setInterval(()=>{
     if(emitter.getLeader().name !== argv.name){
         logger.debug("emit::"+emitter.getLeader().name)
-        emitter.emit("myNamespace.myEvent1",{test:"event1",date: new Date().getTime()})
-        emitter.emit("myNamespace.myEvent2",{test:"event2",date: new Date().getTime()})
+        emitter.emit("myNamespace.myEvent1",{test:"event1",date: new Date().getTime()}).catch((error)=>console.log(error))
+        emitter.emit("myNamespace.myEvent2",{test:"event2",date: new Date().getTime()}).catch((error)=>console.log(error))
     }
 },10000)
 

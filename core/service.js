@@ -2,13 +2,13 @@ const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
 const PROTO_PATH = __dirname + "/../confs/infra.proto";
 const rs = require('jsrsasign');
+const { getLogger } = require("log4js");
 
 class DEmitterService {
     constructor(root){
         this.self = root
     }
-    hearthbeat(caller,callback){
-        
+    hearthbeat(caller,callback){      
         let KJUR = rs.KJUR
         let KEYUTIL = rs.KEYUTIL
         let pvKey = KEYUTIL.getKey(this.self.RSAprivate.toString());    
@@ -27,9 +27,9 @@ class DEmitterService {
         let retobj = {
             name: this.self.name,
             updatedAt: new Date().getTime(),
+            liat:  new Date().getTime(),
             events: detail
         }
-        
         let pbKey = KEYUTIL.getKey(this.self.RSApublic.toString());
         let encrypted = KJUR.crypto.Cipher.encrypt(JSON.stringify(retobj), pbKey, 'RSA');
         callback(null,{
@@ -83,7 +83,37 @@ class DEmitterService {
     emit(caller,callback){
         var packageDef = protoLoader.loadSync(PROTO_PATH, this.self.loaderOptions);
         const DEmitterGRPCService = grpc.loadPackageDefinition(packageDef).DEmitterGRPCService
-        this.self.infrastructure.forEach((cli)=>{
+        let KJUR = rs.KJUR
+        let KEYUTIL = rs.KEYUTIL
+        let pvKey = KEYUTIL.getKey(this.self.RSAprivate.toString());
+        let event1;
+        try {
+            let jsonStr = KJUR.crypto.Cipher.decrypt(caller.request.hash, pvKey, 'RSA');
+            event1 = JSON.parse(jsonStr)            
+        } catch (error) {}
+        let founds = []
+        if(event1){
+            let tags = this.self.metadataContext.filter((item)=>{
+                let events = Object.keys(item.events)
+                let returnv = false
+                events.forEach((evt)=>{
+                    let comprv = ""
+                    if(evt.endsWith("*")){
+                        comprv = evt.substring(0,evt.length - 1)
+                    } else {
+                        comprv = evt
+                    }
+                    returnv = (event1.eventName.startsWith(comprv))
+                })
+                return returnv
+            })
+            founds = tags.map((item)=>{
+                return this.self.infrastructure.filter((item2)=>{
+                    return item2.name == item.name
+                })[0]
+            })
+        }
+        founds.forEach((cli)=>{
             var client = new DEmitterGRPCService(cli.host+":"+cli.port,grpc.credentials.createInsecure());
             client.listen(caller.request,(error, note) => {
                 let name = this.name+".emitted"
@@ -100,7 +130,7 @@ class DEmitterService {
                     eventObject["descr"]="emmited.";
                     this.self.eventEmitter.emit(name,eventObject)
                 }
-            })
+            })            
         })
         callback(null,{
             _id : new Date().getTime(),

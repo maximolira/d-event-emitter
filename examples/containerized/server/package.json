@@ -9,7 +9,7 @@
   "author": "maximolira <gciego@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "d-event-emitter": "^0.1.6",
+    "d-event-emitter": "^0.1.7",
     "express": "^4.18.1",
     "log4js": "^6.6.1",
     "minimist": "^1.2.6"
