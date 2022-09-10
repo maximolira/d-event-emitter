@@ -42,8 +42,9 @@ let emitter = new DEmmiter({
   infra: infraarr,
   RSApublic: pub,
   RSAprivate: prv, 
-  electionTime: [10000,20000],
+  electionTime: [60000,120000],
   delayTime: 3000,
+  heartbeatTime: 6000,
   level: "debug"
 })
 

@@ -40,8 +40,9 @@ let emitter = new DEmmiter({
     infra: infraarr,
     RSApublic: pub,
     RSAprivate: prv,
-    electionTime: [10000,20000],  //interval of election
+    electionTime: [60000,120000],  //interval of election
     delayTime: 3000, //delay start time before first election
+    heartbeatTime: 6000, //heartbeat event timer
     level: "debug" //optional parameter for debugging, default value: error (log4js)
 })
 ```

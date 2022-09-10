@@ -35,6 +35,11 @@ class DEmmiter {
         this.delayTime = params.delayTime
         this.RSApublic = params.RSApublic
         this.RSAprivate = params.RSAprivate
+        this.metadataContext = [{
+            name: this.name,
+            updatedAt: new Date().getTime(),
+            events: {}
+        }];
         this.owner = this.infrastructure.filter((item)=>{ return item.name == this.name })[0]
         this.listeners = []
         this.loaderOptions = {
@@ -59,6 +64,55 @@ class DEmmiter {
         } else {
             let leader = this.infrastructure.filter((item)=>{ return item.startleader })[0]
             this.leader = leader.name
+        }
+        setInterval(()=>{
+            this.hearthbeat()
+        },params.heartbeatTime)
+    }
+    hearthbeat(){
+        if(this.leader == this.name){
+            let KJUR = rs.KJUR
+            let KEYUTIL = rs.KEYUTIL
+            let pbKey = KEYUTIL.getKey(this.RSApublic.toString());
+            let encrypted = KJUR.crypto.Cipher.encrypt(JSON.stringify(this.metadataContext), pbKey, 'RSA');
+            var packageDef = protoLoader.loadSync(PROTO_PATH, this.loaderOptions);
+            const DEmitterGRPCService = grpc.loadPackageDefinition(packageDef).DEmitterGRPCService
+            let clis = this.infrastructure.filter((cli)=>{ return cli.name != this.name })
+            let arrs = clis.map((cli)=>{
+                var client = new DEmitterGRPCService(cli.host+":"+cli.port,grpc.credentials.createInsecure());
+                return () => new Promise((resolve,reject)=>{
+                    client.hearthbeat({ _id : new Date().getTime(), source : this.name, hash: encrypted }, (error, note) => { 
+                        if(error){
+                            resolve(undefined)
+                        } else {
+                            resolve(note)
+                        }
+                    })   
+                })
+            })
+            sequential(arrs).then(res => { 
+                let KJUR = rs.KJUR
+                let KEYUTIL = rs.KEYUTIL
+                let pvKey = KEYUTIL.getKey(this.RSAprivate.toString());    
+                res.forEach((tokened)=>{
+                    try {
+                        let detailobj = KJUR.crypto.Cipher.decrypt(tokened.hash, pvKey, 'RSA');
+                        let remoteobj = JSON.parse(detailobj)
+                        let found = false;
+                        this.metadataContext.forEach((item,index)=>{
+                            if(item.name == remoteobj.name){
+                                found = true
+                                this.metadataContext[index] = remoteobj
+                            }
+                        })
+                        if(!found){
+                            this.metadataContext.push(remoteobj)
+                        }
+                    } catch (error) {
+                    }
+                    
+                })
+            })
         }
     }
     election(){
@@ -164,6 +218,22 @@ class DEmmiter {
         })
         if(!exist){
             this.listeners.push({name:eventName,listener:listener1})
+            let detail = {}
+            this.listeners.forEach((listener)=>{
+                if(detail[listener.name]){
+                    detail[listener.name] ++
+                } else {
+                    detail[listener.name] = 1
+                }
+            })
+            
+            this.metadataContext.forEach((item,index)=>{
+                if(item.name == this.name){
+                    this.metadataContext[index].events = detail
+                    this.metadataContext[index].updatedAt = new Date().getTime()
+                }
+            })
+
         }
     }
     removeAllListener(eventName){
@@ -174,6 +244,20 @@ class DEmmiter {
             }
         })
         this.listeners = newlisteners
+        let detail = {}
+        this.listeners.forEach((listener)=>{
+            if(detail[listener.name]){
+                detail[listener.name] ++
+            } else {
+                detail[listener.name] = 1
+            }
+        })
+        this.metadataContext.forEach((item,index)=>{
+            if(item.name == this.name){
+                this.metadataContext[index].events = detail
+                this.metadataContext[index].updatedAt = new Date().getTime()
+            }
+        })
     }
     removeListener(eventName, listener1){
         let indexToRemove = -1
@@ -183,6 +267,20 @@ class DEmmiter {
             }
         })
         this.listeners.splice(indexToRemove,1)
+        let detail = {}
+        this.listeners.forEach((listener)=>{
+            if(detail[listener.name]){
+                detail[listener.name] ++
+            } else {
+                detail[listener.name] = 1
+            }
+        })
+        this.metadataContext.forEach((item,index)=>{
+            if(item.name == this.name){
+                this.metadataContext[index].events = detail
+                this.metadataContext[index].updatedAt = new Date().getTime()
+            }
+        })
     }
     emit(eventname,args){
         return new Promise((resolve,reject)=>{
@@ -227,6 +325,9 @@ class DEmmiter {
     }
     statusEmitter(){
         return this.eventEmitter
+    }
+    getMetadataContext(){
+        return this.metadataContext
     }
 }
 

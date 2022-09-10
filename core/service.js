@@ -7,6 +7,37 @@ class DEmitterService {
     constructor(root){
         this.self = root
     }
+    hearthbeat(caller,callback){
+        
+        let KJUR = rs.KJUR
+        let KEYUTIL = rs.KEYUTIL
+        let pvKey = KEYUTIL.getKey(this.self.RSAprivate.toString());    
+        try {
+            let detailobj = KJUR.crypto.Cipher.decrypt(caller.request.hash, pvKey, 'RSA');
+            this.self.metadataContext = JSON.parse(detailobj)
+        } catch (error) {}
+        let detail = {}
+        this.self.listeners.forEach((listener)=>{
+            if(detail[listener.name]){
+                detail[listener.name] ++
+            } else {
+                detail[listener.name] = 1
+            }
+        })
+        let retobj = {
+            name: this.self.name,
+            updatedAt: new Date().getTime(),
+            events: detail
+        }
+        
+        let pbKey = KEYUTIL.getKey(this.self.RSApublic.toString());
+        let encrypted = KJUR.crypto.Cipher.encrypt(JSON.stringify(retobj), pbKey, 'RSA');
+        callback(null,{
+            _id : new Date().getTime(),
+            source : this.self.name,
+            hash : encrypted
+        });    
+    }
     listen(caller,callback){
         let KJUR = rs.KJUR
         let KEYUTIL = rs.KEYUTIL
