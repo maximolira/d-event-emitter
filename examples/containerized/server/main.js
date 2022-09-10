@@ -37,7 +37,15 @@ let infraarr = JSON.parse(fs.readFileSync("./confs/infra.json"))
 let pub = fs.readFileSync("./certificates/public.pem") //all worker need this
 let prv = fs.readFileSync("./certificates/private.pem") //all worker need this
 
-let emitter = new DEmmiter({name: "front-controller",infra: infraarr,RSApublic: pub,RSAprivate: prv, level: "debug"})
+let emitter = new DEmmiter({
+  name: "front-controller",
+  infra: infraarr,
+  RSApublic: pub,
+  RSAprivate: prv, 
+  electionTime: [10000,20000],
+  delayTime: 3000,
+  level: "debug"
+})
 
 
 const app = express()

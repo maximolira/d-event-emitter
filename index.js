@@ -31,6 +31,8 @@ class DEmmiter {
         });
         this.infrastructure = params.infra
         this.name = params.name
+        this.electionTime = params.electionTime
+        this.delayTime = params.delayTime
         this.RSApublic = params.RSApublic
         this.RSAprivate = params.RSAprivate
         this.owner = this.infrastructure.filter((item)=>{ return item.name == this.name })[0]
@@ -53,7 +55,7 @@ class DEmmiter {
         })
         if(this.owner.startleader){
             this.leader = this.name
-            setTimeout(()=> { this.election() },3000)
+            setTimeout(()=> { this.election() },this.delayTime)
         } else {
             let leader = this.infrastructure.filter((item)=>{ return item.startleader })[0]
             this.leader = leader.name

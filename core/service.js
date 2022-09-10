@@ -96,7 +96,7 @@ class DEmitterService {
             this.self.leader = KJUR.crypto.Cipher.decrypt(caller.request.leader, pvKey, 'RSA');
             if(this.self.name == this.self.leader){
                 let nextPeriod = (min, max) => {  return Math.floor(Math.random() * (max - min + 1) + min) };
-                let nextelection = nextPeriod(10000,20000)
+                let nextelection = nextPeriod(this.self.electionTime[0],this.self.electionTime[1])
                 setTimeout(()=> { this.self.election() },nextelection)
             }
             callback(null,{
