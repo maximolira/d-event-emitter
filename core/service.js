@@ -9,11 +9,8 @@ class DEmitterService {
         this.self = root
     }
     hearthbeat(caller,callback){      
-        let KJUR = rs.KJUR
-        let KEYUTIL = rs.KEYUTIL
-        let pvKey = KEYUTIL.getKey(this.self.RSAprivate.toString());    
         try {
-            let detailobj = KJUR.crypto.Cipher.decrypt(caller.request.hash, pvKey, 'RSA');
+            let detailobj = this.self.encryptor.decrypt(caller.request.hash)
             this.self.metadataContext = JSON.parse(detailobj)
         } catch (error) {}
         let detail = {}
@@ -30,8 +27,7 @@ class DEmitterService {
             liat:  new Date().getTime(),
             events: detail
         }
-        let pbKey = KEYUTIL.getKey(this.self.RSApublic.toString());
-        let encrypted = KJUR.crypto.Cipher.encrypt(JSON.stringify(retobj), pbKey, 'RSA');
+        let encrypted = this.self.encryptor.encrypt(JSON.stringify(retobj))
         callback(null,{
             _id : new Date().getTime(),
             source : this.self.name,
@@ -39,11 +35,8 @@ class DEmitterService {
         });    
     }
     listen(caller,callback){
-        let KJUR = rs.KJUR
-        let KEYUTIL = rs.KEYUTIL
-        let pvKey = KEYUTIL.getKey(this.self.RSAprivate.toString());
         try {
-            let jsonStr = KJUR.crypto.Cipher.decrypt(caller.request.hash, pvKey, 'RSA');
+            let jsonStr = this.self.encryptor.decrypt(caller.request.hash)
             let obj = JSON.parse(jsonStr)
             let affecteds = this.self.listeners.filter((list)=>{ 
                 if(list.name.endsWith("*")){
@@ -83,12 +76,9 @@ class DEmitterService {
     emit(caller,callback){
         var packageDef = protoLoader.loadSync(PROTO_PATH, this.self.loaderOptions);
         const DEmitterGRPCService = grpc.loadPackageDefinition(packageDef).DEmitterGRPCService
-        let KJUR = rs.KJUR
-        let KEYUTIL = rs.KEYUTIL
-        let pvKey = KEYUTIL.getKey(this.self.RSAprivate.toString());
         let event1;
         try {
-            let jsonStr = KJUR.crypto.Cipher.decrypt(caller.request.hash, pvKey, 'RSA');
+            let jsonStr = this.self.encryptor.decrypt(caller.request.hash)
             event1 = JSON.parse(jsonStr)            
         } catch (error) {}
         let founds = []
@@ -139,10 +129,6 @@ class DEmitterService {
         });
     }
     refresh(caller,callback){
-        let KJUR = rs.KJUR
-        let KEYUTIL = rs.KEYUTIL
-        let pvKey = KEYUTIL.getKey(this.self.RSAprivate.toString());
-        
         let name = this.self.name+".refreshed"
         let eventObject = {
             eventName: name,
@@ -154,7 +140,7 @@ class DEmitterService {
         this.self.eventEmitter.emit(name,eventObject)
         
         try {
-            this.self.leader = KJUR.crypto.Cipher.decrypt(caller.request.leader, pvKey, 'RSA');
+            this.self.leader = this.self.encryptor.decrypt(caller.request.leader)
             if(this.self.name == this.self.leader){
                 let nextPeriod = (min, max) => {  return Math.floor(Math.random() * (max - min + 1) + min) };
                 let nextelection = nextPeriod(this.self.electionTime[0],this.self.electionTime[1])
@@ -184,11 +170,7 @@ class DEmitterService {
         } else if(clients.length == 1) {
             vote = clients[0].name
         } 
-
-        let KJUR = rs.KJUR
-        let KEYUTIL = rs.KEYUTIL
-        let pbKey = KEYUTIL.getKey(this.self.RSApublic.toString());
-        let encrypted = KJUR.crypto.Cipher.encrypt(vote, pbKey, 'RSA');
+        let encrypted = this.self.encryptor.encrypt(vote)
         let name = this.self.name+".vote"
         let eventObject = {
             eventName: name,

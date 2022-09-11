@@ -6,10 +6,14 @@ const log4js = require("log4js")
 const PROTO_PATH = __dirname + "/confs/infra.proto";
 const EventEmitter2 = require('eventemitter2');
 const DEmitterService = require("./core/service")
+const DEmitterEncryptor = require("./core/encryptor")
 
 class DEmmiter {
     constructor(params){
         if(!params) throw new Error("params not defined")
+        
+        this.encryptor = new DEmitterEncryptor(this)
+
         log4js.configure({
             appenders: { 
               main:
@@ -79,10 +83,7 @@ class DEmmiter {
             }
         }
         if(this.leader == this.name){
-            let KJUR = rs.KJUR
-            let KEYUTIL = rs.KEYUTIL
-            let pbKey = KEYUTIL.getKey(this.RSApublic.toString());
-            let encrypted = KJUR.crypto.Cipher.encrypt(JSON.stringify(this.metadataContext), pbKey, 'RSA');
+            let encrypted = this.encryptor.encrypt(JSON.stringify(this.metadataContext))
             var packageDef = protoLoader.loadSync(PROTO_PATH, this.loaderOptions);
             const DEmitterGRPCService = grpc.loadPackageDefinition(packageDef).DEmitterGRPCService
             let clis = this.infrastructure.filter((cli)=>{ return cli.name != this.name })
@@ -99,12 +100,9 @@ class DEmmiter {
                 })
             })
             sequential(arrs).then(res => { 
-                let KJUR = rs.KJUR
-                let KEYUTIL = rs.KEYUTIL
-                let pvKey = KEYUTIL.getKey(this.RSAprivate.toString());    
                 res.forEach((tokened)=>{
                     try {
-                        let detailobj = KJUR.crypto.Cipher.decrypt(tokened.hash, pvKey, 'RSA');
+                        let detailobj = this.encryptor.decrypt(tokened.hash)
                         let remoteobj = JSON.parse(detailobj)
                         let found = false;
                         this.metadataContext.forEach((item,index)=>{
@@ -118,7 +116,6 @@ class DEmmiter {
                         }
                     } catch (error) {
                     }
-                    
                 })
             })
         } 
@@ -153,13 +150,10 @@ class DEmmiter {
         })
         sequential(arrs).then(res => { 
             let counter = {}
-            let KJUR = rs.KJUR
-            let KEYUTIL = rs.KEYUTIL
-            let pvKey = KEYUTIL.getKey(this.RSAprivate.toString());
             res.map((item)=>{
                 if(item.vote){
                     try {
-                        let votefor = KJUR.crypto.Cipher.decrypt(item.vote, pvKey, 'RSA');
+                        let votefor = this.encryptor.decrypt(item.vote)
                         let factor = 1;
                         if(votefor == this.leader){
                             factor = 0.5;
@@ -184,8 +178,7 @@ class DEmmiter {
             let arrrefresh = this.infrastructure.map((cli)=>{
                 return ()=> new Promise((resolve,reject)=>{
                     var client = new DEmitterGRPCService(cli.host+":"+cli.port,grpc.credentials.createInsecure());
-                    let pbKey = KEYUTIL.getKey(this.RSApublic.toString());
-                    let encrypted = KJUR.crypto.Cipher.encrypt(newleader, pbKey, 'RSA');
+                    let encrypted = this.encryptor.encrypt(newleader)
                     client.refresh({ _id : new Date().getTime(), source : this.name, leader: encrypted },(error, note) => {
                         let eventObject = {
                             eventName: this.name+".refresh",
@@ -311,12 +304,8 @@ class DEmmiter {
                 reject("not leader?")
             } else {
                 var client = new DEmitterGRPCService(leader.host+":"+leader.port,grpc.credentials.createInsecure());
-    
                 let obj = { eventName:eventname, encodedArgs: args }
-                let KJUR = rs.KJUR
-                let KEYUTIL = rs.KEYUTIL
-                let pbKey = KEYUTIL.getKey(this.RSApublic.toString());
-                let encrypted = KJUR.crypto.Cipher.encrypt(JSON.stringify(obj), pbKey, 'RSA');
+                let encrypted = this.encryptor.encrypt(JSON.stringify(obj))
                 client.emit({ _id : new Date().getTime(), source : this.name, hash: encrypted },(error, note) => {
                     if(error) {
                         this.logger.debug(leader)
