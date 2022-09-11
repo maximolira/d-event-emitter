@@ -2,16 +2,17 @@ const sequential = require('promise-sequential');
 const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
 const log4js = require("log4js")
+const fs = require("fs")
 const PROTO_PATH = __dirname + "/confs/infra.proto";
 const EventEmitter2 = require('eventemitter2');
 const DEmitterService = require("./bin/service")
-const DEmitterEncryptor = require("./bin/encryptor")
+const DEmitterCompressor = require("./bin/compressor")
 const DEmitterClient = require("./bin/cli")
 const DEmitterTimers = require("./bin/timers")
 class DEmmiter {
     constructor(params){
         if(!params) throw new Error("params not defined")    
-        this.encryptor = new DEmitterEncryptor(this)
+        this.compressor = new DEmitterCompressor(this)
         this.timers = new DEmitterTimers(this)
         log4js.configure({
             appenders: { 
@@ -37,8 +38,7 @@ class DEmmiter {
         this.electionTime = params.electionTime
         this.delayTime = params.delayTime
         this.heartbeatTime = params.heartbeatTime
-        this.RSApublic = params.RSApublic
-        this.RSAprivate = params.RSAprivate
+        this.ssl = params.ssl
         this.metadataContext = [{
             name: this.name,
             updatedAt: new Date().getTime(),
@@ -48,6 +48,14 @@ class DEmmiter {
         this.owner = this.infrastructure.filter((item)=>{ return item.name == this.name })[0]
         this.listeners = []
         this.timers.init()
+        let credentials = grpc.ServerCredentials.createInsecure()
+        if(params.ssl){
+            credentials = grpc.ServerCredentials.createSsl(
+                fs.readFileSync(params.ssl.ca), [{
+                cert_chain: fs.readFileSync(params.ssl.cert_chain),
+                private_key: fs.readFileSync(params.ssl.private_key)
+            }], true);
+        }
         this.loaderOptions = {
             keepCase: true,
             longs: String,
@@ -59,8 +67,7 @@ class DEmmiter {
         var packageDef = protoLoader.loadSync(PROTO_PATH, this.loaderOptions);
         const grpcObj = grpc.loadPackageDefinition(packageDef);
         this.server.addService(grpcObj.DEmitterGRPCService.service, new DEmitterService(this) )
-        
-        this.server.bindAsync(this.owner.host+':'+this.owner.port, grpc.ServerCredentials.createInsecure(),(error,port)=>{ 
+        this.server.bindAsync(this.owner.host+':'+this.owner.port, credentials ,(error,port)=>{ 
             if(error) throw error
             this.server.start(); 
         })
@@ -159,7 +166,7 @@ class DEmmiter {
             } else {
                 let client = new DEmitterClient(this,leader)
                 let obj = { eventName:eventname, encodedArgs: args }
-                let encrypted = this.encryptor.encrypt(JSON.stringify(obj))
+                let encrypted = this.compressor.compress(JSON.stringify(obj))
                 sequential([client.emit(encrypted)]).then(res => { 
                     resolve(res[0])    
                 }).catch(err => { })  

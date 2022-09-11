@@ -1,6 +1,7 @@
 const log4js = require("log4js")
 const fs = require("fs")
-const DEmmiter = require("d-event-emitter")
+const DEmmiter = require("./../../../")
+
 
 BigInt.prototype.toJSON = function() { return this.toString() }
 process.setMaxListeners(0);
@@ -17,8 +18,6 @@ log4js.configure({
 
 var logger = log4js.getLogger();
 let infraarr = JSON.parse(fs.readFileSync("./confs/infra.json"))
-let pub = fs.readFileSync("./certificates/public.pem") //all worker need this
-let prv = fs.readFileSync("./certificates/private.pem") //all worker need this
 
 let emitter = new DEmmiter({
     name: "worker-users",
@@ -28,7 +27,12 @@ let emitter = new DEmmiter({
     electionTime: [60000,120000],
     delayTime: 3000,
     heartbeatTime: 6000,
-    level: "debug"
+    level: "debug",
+    ssl:{
+        ca: "./certificates/ca.crt",
+        cert_chain: "./certificates/server.crt",
+        private_key: "./certificates/server.key"
+    }
 })
 
 let usersList = []

@@ -22,31 +22,32 @@ logger.debug("processname::"+argv.name)
 
 let infraarr = [{
     name: "test1",  //name of the worker
-    host: "127.0.0.1", //host
+    host: "localhost", //host
     port: 65000, //port
     eligible: true, //if true worker can act as leader
     startleader: true // when start there must be only one :)
 },{
     name: "test2",
-    host: "127.0.0.1",
+    host: "localhost",
     port: 65001,
     eligible: true,
     startleader: false
 }]
 
-let pub = fs.readFileSync("./certificates/public.pem") //all worker need this
-let prv = fs.readFileSync("./certificates/private.pem") //all worker need this
 
 
 let emitter = new DEmmiter({
     name: argv.name,
     infra: infraarr,
-    RSApublic: pub,
-    RSAprivate: prv,
     electionTime: [12000,18000],
     delayTime: 3000,
     heartbeatTime: 6000,
-    level: "debug"
+    level: "debug",
+    ssl:{
+        ca: "./certificates/ca.crt",
+        cert_chain: "./certificates/server.crt",
+        private_key: "./certificates/server.key"
+    }
 })
 
 //setting a listener

@@ -32,7 +32,7 @@ class DEmitterTimers {
             }
         }
         if(this.self.leader == this.self.name){
-            let encrypted = this.self.encryptor.encrypt(JSON.stringify(this.self.metadataContext))
+            let encrypted = this.self.compressor.compress(JSON.stringify(this.self.metadataContext))
             let clis = this.self.infrastructure.filter((cli)=>{ return cli.name != this.self.name })
             let arrs = clis.map((cli)=>{
                 var client = new DEmitterClient(this.self,cli)
@@ -41,7 +41,7 @@ class DEmitterTimers {
             sequential(arrs).then(res => { 
                 res.forEach((tokened)=>{
                     try {
-                        let detailobj = this.self.encryptor.decrypt(tokened.hash)
+                        let detailobj = this.self.compressor.decompress(tokened.hash)
                         let remoteobj = JSON.parse(detailobj)
                         let found = false;
                         this.self.metadataContext.forEach((item,index)=>{
@@ -71,7 +71,7 @@ class DEmitterTimers {
                 res.map((item)=>{
                     if(item.vote){
                         try {
-                            let votefor = this.self.encryptor.decrypt(item.vote)
+                            let votefor = this.self.compressor.decompress(item.vote)
                             let factor = 1;
                             if(votefor == this.self.leader){
                                 factor = 0.5;
@@ -93,7 +93,7 @@ class DEmitterTimers {
                         newleader = key
                     }
                 }
-                let encrypted = this.self.encryptor.encrypt(newleader)
+                let encrypted = this.self.compressor.compress(newleader)
                 let arrrefresh = this.self.infrastructure.map((cli)=>{
                     let client = new DEmitterClient(this.self,cli)
                     return client.refresh(encrypted)

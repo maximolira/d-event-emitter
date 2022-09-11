@@ -7,7 +7,7 @@ class DEmitterService {
     }
     hearthbeat(caller,callback){      
         try {
-            let detailobj = this.self.encryptor.decrypt(caller.request.hash)
+            let detailobj = this.self.compressor.decompress(caller.request.hash)
             this.self.metadataContext = JSON.parse(detailobj)
         } catch (error) {}
         let detail = {}
@@ -24,7 +24,7 @@ class DEmitterService {
             liat:  new Date().getTime(),
             events: detail
         }
-        let encrypted = this.self.encryptor.encrypt(JSON.stringify(retobj))
+        let encrypted = this.self.compressor.compress(JSON.stringify(retobj))
         callback(null,{
             _id : new Date().getTime(),
             source : this.self.name,
@@ -33,7 +33,7 @@ class DEmitterService {
     }
     listen(caller,callback){
         try {
-            let jsonStr = this.self.encryptor.decrypt(caller.request.hash)
+            let jsonStr = this.self.compressor.decompress(caller.request.hash)
             let obj = JSON.parse(jsonStr)
             let affecteds = this.self.listeners.filter((list)=>{ 
                 if(list.name.endsWith("*")){
@@ -74,7 +74,7 @@ class DEmitterService {
         
         let event1;
         try {
-            let jsonStr = this.self.encryptor.decrypt(caller.request.hash)
+            let jsonStr = this.self.compressor.decompress(caller.request.hash)
             event1 = JSON.parse(jsonStr)            
         } catch (error) {}
         let founds = []
@@ -124,7 +124,7 @@ class DEmitterService {
         this.self.eventEmitter.emit(name,eventObject)
         
         try {
-            this.self.leader = this.self.encryptor.decrypt(caller.request.leader)
+            this.self.leader = this.self.compressor.decompress(caller.request.leader)
             if(this.self.name == this.self.leader){
                 let nextPeriod = (min, max) => {  return Math.floor(Math.random() * (max - min + 1) + min) };
                 let nextelection = nextPeriod(this.self.electionTime[0],this.self.electionTime[1])
@@ -154,7 +154,7 @@ class DEmitterService {
         } else if(clients.length == 1) {
             vote = clients[0].name
         } 
-        let encrypted = this.self.encryptor.encrypt(vote)
+        let encrypted = this.self.compressor.compress(vote)
         let name = this.self.name+".vote"
         let eventObject = {
             eventName: name,

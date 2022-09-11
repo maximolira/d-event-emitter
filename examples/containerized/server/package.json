@@ -13,5 +13,9 @@
     "express": "^4.18.1",
     "log4js": "^6.6.1",
     "minimist": "^1.2.6"
+  },
+  "devDependencies": {
+    "grunt": "^1.5.3",
+    "grunt-shell": "^4.0.0"
   }
 }

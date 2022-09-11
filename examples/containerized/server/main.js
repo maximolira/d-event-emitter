@@ -1,7 +1,7 @@
 const log4js = require("log4js")
 const fs = require("fs")
 const express = require('express')
-const DEmmiter = require("d-event-emitter")
+const DEmmiter = require("./../../../")
 
 var argv = require('minimist')(process.argv.slice(2));
 BigInt.prototype.toJSON = function() { return this.toString() }
@@ -34,18 +34,19 @@ errorNoCli = (error)=>{
 };
 
 let infraarr = JSON.parse(fs.readFileSync("./confs/infra.json"))
-let pub = fs.readFileSync("./certificates/public.pem") //all worker need this
-let prv = fs.readFileSync("./certificates/private.pem") //all worker need this
 
 let emitter = new DEmmiter({
   name: "front-controller",
   infra: infraarr,
-  RSApublic: pub,
-  RSAprivate: prv, 
   electionTime: [60000,120000],
   delayTime: 3000,
   heartbeatTime: 6000,
-  level: "debug"
+  level: "debug",
+  ssl:{
+    ca: "./certificates/ca.crt",
+    cert_chain: "./certificates/server.crt",
+    private_key: "./certificates/server.key"
+  }
 })
 
 

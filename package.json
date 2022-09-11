@@ -1,6 +1,6 @@
 {
   "name": "d-event-emitter",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "description": "event emitter using interprocess network layer",
   "main": "index.js",
   "scripts": {
@@ -28,7 +28,8 @@
     "grpc": "^1.24.11",
     "jsrsasign": "^10.5.25",
     "log4js": "^6.6.1",
-    "promise-sequential": "^1.1.1"
+    "promise-sequential": "^1.1.1",
+    "zlib": "^1.0.5"
   },
   "engines": {
     "node": ">= 16.16.0"

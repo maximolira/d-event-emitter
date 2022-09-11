@@ -1,11 +1,22 @@
 const PROTO_PATH = __dirname + "/../confs/infra.proto";
 const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
-
+const fs = require("fs")
 class DEmitterClient {
     constructor(root,cli){
         this.self = root
         this.cli = cli
+
+        let credentials = grpc.ServerCredentials.createInsecure()
+        if(this.self.ssl){
+            credentials = grpc.ChannelCredentials.createSsl(
+                fs.readFileSync('./certificates/ca.crt'), 
+                fs.readFileSync('./certificates/client.key'), 
+                fs.readFileSync('./certificates/client.crt')
+            );
+        }
+
+
         this.loaderOptions = {
             keepCase: true,
             longs: String,
@@ -15,7 +26,7 @@ class DEmitterClient {
         };
         var packageDef = protoLoader.loadSync(PROTO_PATH, this.loaderOptions);
         const DEmitterGRPCService = grpc.loadPackageDefinition(packageDef).DEmitterGRPCService
-        this.client = new DEmitterGRPCService(cli.host+":"+cli.port,grpc.credentials.createInsecure());
+        this.client = new DEmitterGRPCService(cli.host+":"+cli.port,credentials);
     }
     hearthbeat(encrypted){
         return () => new Promise((resolve,reject)=>{

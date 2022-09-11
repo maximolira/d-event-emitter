@@ -1,4 +1,4 @@
-# d-event-emitter v(0.1.9)
+# d-event-emitter v(0.2.0)
 event emitter using interprocess network layer
 
 ## Installation
@@ -31,19 +31,20 @@ let infraarr = [{
     startleader: false
 }]
 
-//RSA security certificates, these must be shared by all clients
-let pub = fs.readFileSync("./certificates/public.pem") //all worker need this
-let prv = fs.readFileSync("./certificates/private.pem") //all worker need this
 
 let emitter = new DEmmiter({
     name: argv.name,
     infra: infraarr,
-    RSApublic: pub,
-    RSAprivate: prv,
     electionTime: [60000,120000],  //interval of election
     delayTime: 3000, //delay start time before first election
     heartbeatTime: 6000, //heartbeat event timer
     level: "debug" //optional parameter for debugging, default value: error (log4js)
+    // if SSL certificates are not included, the connection will be made using insecure mode
+    ssl:{
+        ca: "./certificates/ca.crt", //SSL ca certificate
+        cert_chain: "./certificates/server.crt", // SSL cert_chain certificate
+        private_key: "./certificates/server.key" // SSL private key
+    }
 })
 ```
 
