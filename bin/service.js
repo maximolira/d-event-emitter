@@ -1,8 +1,5 @@
-const grpc = require("@grpc/grpc-js");
-const protoLoader = require("@grpc/proto-loader");
-const PROTO_PATH = __dirname + "/../confs/infra.proto";
-const rs = require('jsrsasign');
-const { getLogger } = require("log4js");
+const sequential = require('promise-sequential');
+const DEmitterClient = require("./cli")
 
 class DEmitterService {
     constructor(root){
@@ -74,8 +71,7 @@ class DEmitterService {
         
     }
     emit(caller,callback){
-        var packageDef = protoLoader.loadSync(PROTO_PATH, this.self.loaderOptions);
-        const DEmitterGRPCService = grpc.loadPackageDefinition(packageDef).DEmitterGRPCService
+        
         let event1;
         try {
             let jsonStr = this.self.encryptor.decrypt(caller.request.hash)
@@ -103,30 +99,18 @@ class DEmitterService {
                 })[0]
             })
         }
+        let promarr = []
         founds.forEach((cli)=>{
-            var client = new DEmitterGRPCService(cli.host+":"+cli.port,grpc.credentials.createInsecure());
-            client.listen(caller.request,(error, note) => {
-                let name = this.name+".emitted"
-                let eventObject = {
-                    eventName: name,
-                    createdAt: new Date().getTime(),
-                    target: cli.name,
-                    source: this.name
-                };
-                if(error) {
-                    eventObject["descr"]="error when emmited.";
-                    this.self.eventEmitter.emit(name,eventObject)
-                } else {
-                    eventObject["descr"]="emmited.";
-                    this.self.eventEmitter.emit(name,eventObject)
-                }
-            })            
+            var client = new DEmitterClient(this.self,cli)
+            promarr.push(client.listen(caller.request))
         })
-        callback(null,{
-            _id : new Date().getTime(),
-            source : this.self.name,
-            status : "ok"
-        });
+        sequential(promarr).then(_ => { 
+            callback(null,{
+                _id : new Date().getTime(),
+                source : this.self.name,
+                status : "ok"
+            });      
+        })
     }
     refresh(caller,callback){
         let name = this.self.name+".refreshed"
@@ -144,7 +128,7 @@ class DEmitterService {
             if(this.self.name == this.self.leader){
                 let nextPeriod = (min, max) => {  return Math.floor(Math.random() * (max - min + 1) + min) };
                 let nextelection = nextPeriod(this.self.electionTime[0],this.self.electionTime[1])
-                setTimeout(()=> { this.self.election() },nextelection)
+                setTimeout(()=> { this.self.timers.election() },nextelection)
             }
             callback(null,{
                 _id : new Date().getTime(),

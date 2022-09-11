@@ -1,19 +1,18 @@
 const sequential = require('promise-sequential');
 const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
-const rs = require('jsrsasign');
 const log4js = require("log4js")
 const PROTO_PATH = __dirname + "/confs/infra.proto";
 const EventEmitter2 = require('eventemitter2');
-const DEmitterService = require("./core/service")
-const DEmitterEncryptor = require("./core/encryptor")
-
+const DEmitterService = require("./bin/service")
+const DEmitterEncryptor = require("./bin/encryptor")
+const DEmitterClient = require("./bin/cli")
+const DEmitterTimers = require("./bin/timers")
 class DEmmiter {
     constructor(params){
-        if(!params) throw new Error("params not defined")
-        
+        if(!params) throw new Error("params not defined")    
         this.encryptor = new DEmitterEncryptor(this)
-
+        this.timers = new DEmitterTimers(this)
         log4js.configure({
             appenders: { 
               main:
@@ -37,6 +36,7 @@ class DEmmiter {
         this.name = params.name
         this.electionTime = params.electionTime
         this.delayTime = params.delayTime
+        this.heartbeatTime = params.heartbeatTime
         this.RSApublic = params.RSApublic
         this.RSAprivate = params.RSAprivate
         this.metadataContext = [{
@@ -47,6 +47,7 @@ class DEmmiter {
         }];
         this.owner = this.infrastructure.filter((item)=>{ return item.name == this.name })[0]
         this.listeners = []
+        this.timers.init()
         this.loaderOptions = {
             keepCase: true,
             longs: String,
@@ -63,151 +64,7 @@ class DEmmiter {
             if(error) throw error
             this.server.start(); 
         })
-        if(this.owner.startleader){
-            this.leader = this.name
-            setTimeout(()=> { this.election() },this.delayTime)
-        } else {
-            let leader = this.infrastructure.filter((item)=>{ return item.startleader })[0]
-            this.leader = leader.name
-        }
-        setInterval(()=>{
-            this.hearthbeat()
-        },params.heartbeatTime)
-    }
-    hearthbeat(){
-        let metadata = this.metadataContext.filter((item)=> { return item.name == this.name } )[0]
-        if(metadata){
-            let actual = new Date().getTime()
-            if((metadata.liat + this.electionTime[1]) < actual){
-                this.election()
-            }
-        }
-        if(this.leader == this.name){
-            let encrypted = this.encryptor.encrypt(JSON.stringify(this.metadataContext))
-            var packageDef = protoLoader.loadSync(PROTO_PATH, this.loaderOptions);
-            const DEmitterGRPCService = grpc.loadPackageDefinition(packageDef).DEmitterGRPCService
-            let clis = this.infrastructure.filter((cli)=>{ return cli.name != this.name })
-            let arrs = clis.map((cli)=>{
-                var client = new DEmitterGRPCService(cli.host+":"+cli.port,grpc.credentials.createInsecure());
-                return () => new Promise((resolve,reject)=>{
-                    client.hearthbeat({ _id : new Date().getTime(), source : this.name, hash: encrypted }, (error, note) => { 
-                        if(error){
-                            resolve(undefined)
-                        } else {
-                            resolve(note)
-                        }
-                    })   
-                })
-            })
-            sequential(arrs).then(res => { 
-                res.forEach((tokened)=>{
-                    try {
-                        let detailobj = this.encryptor.decrypt(tokened.hash)
-                        let remoteobj = JSON.parse(detailobj)
-                        let found = false;
-                        this.metadataContext.forEach((item,index)=>{
-                            if(item.name == remoteobj.name){
-                                found = true
-                                this.metadataContext[index] = remoteobj
-                            }
-                        })
-                        if(!found){
-                            this.metadataContext.push(remoteobj)
-                        }
-                    } catch (error) {
-                    }
-                })
-            })
-        } 
-    }
-    election(){
-        let clients = this.infrastructure.filter((item)=>{ return item.eligible })
-        var packageDef = protoLoader.loadSync(PROTO_PATH, this.loaderOptions);
-        const DEmitterGRPCService = grpc.loadPackageDefinition(packageDef).DEmitterGRPCService
-        let arrs = clients.map((cli)=>{
-            var client = new DEmitterGRPCService(cli.host+":"+cli.port,grpc.credentials.createInsecure());
-            return () => new Promise((resolve,reject)=>{
-                client.elections({ _id : new Date().getTime(), source : this.name }, (error, note) => {   
-                    let name = this.name+".election"
-                    let eventObject = {
-                        eventName: name,
-                        createdAt: new Date().getTime(),
-                        target: cli.name,
-                        source: this.name
-                    };
-                    if (error) {
-                        eventObject["descr"]="error when call for election.";
-                        this.eventEmitter.emit(name,eventObject)
-                        resolve({source:"",vote:""})
-                    } else {
-                        eventObject["descr"]="called for election.";
-                        let name = this.name+".election"
-                        this.eventEmitter.emit(name,eventObject)
-                        resolve(note)
-                    }
-                })
-            })
-        })
-        sequential(arrs).then(res => { 
-            let counter = {}
-            res.map((item)=>{
-                if(item.vote){
-                    try {
-                        let votefor = this.encryptor.decrypt(item.vote)
-                        let factor = 1;
-                        if(votefor == this.leader){
-                            factor = 0.5;
-                        }
-                        if(counter[votefor]){
-                            counter[votefor] = counter[votefor]  + (1 * factor)
-                        } else {
-                            counter[votefor] = (1 * factor)
-                        }    
-                    } catch (error) {}
-                }
-            })
-            let keys = Object.keys(counter)
-            let newleader = "", newleaderrecount = 0
-            for (let index = 0; index < keys.length; index++) {
-                const key = keys[index];
-                if(newleaderrecount < counter[key]){
-                    newleaderrecount = counter[key]
-                    newleader = key
-                }
-            }
-            let arrrefresh = this.infrastructure.map((cli)=>{
-                return ()=> new Promise((resolve,reject)=>{
-                    var client = new DEmitterGRPCService(cli.host+":"+cli.port,grpc.credentials.createInsecure());
-                    let encrypted = this.encryptor.encrypt(newleader)
-                    client.refresh({ _id : new Date().getTime(), source : this.name, leader: encrypted },(error, note) => {
-                        let eventObject = {
-                            eventName: this.name+".refresh",
-                            descr:"called for election result.",
-                            createdAt: new Date().getTime(),
-                            target: cli.name,
-                            source: this.name
-                        };
-                        if(error) {
-                            eventObject["descr"] = "error when call for refresh"
-                            this.eventEmitter.emit(this.name+".refresh",eventObject)
-                            resolve(cli)
-                        } else {
-                            eventObject["descr"] = "refreshed"
-                            this.eventEmitter.emit(this.name+".refresh",eventObject)
-                            resolve(cli)
-                        }
-                    })
-                })
-            }) 
-            sequential(arrrefresh).then(res => { 
-                
-            }).catch(err => { 
-                throw err
-            })         
-        }).catch(err => { 
-            throw err
-        })
-    }
+    } 
     getLeader(){
         let leader = this.infrastructure.filter((item)=>{
             return item.name == this.leader
@@ -234,8 +91,7 @@ class DEmmiter {
                 } else {
                     detail[listener.name] = 1
                 }
-            })
-            
+            })        
             this.metadataContext.forEach((item,index)=>{
                 if(item.name == this.name){
                     this.metadataContext[index].events = detail
@@ -243,7 +99,6 @@ class DEmmiter {
                     this.metadataContext[index].liat = new Date().getTime()
                 }
             })
-
         }
     }
     removeAllListener(eventName){
@@ -296,27 +151,20 @@ class DEmmiter {
     }
     emit(eventname,args){
         return new Promise((resolve,reject)=>{
-            var packageDef = protoLoader.loadSync(PROTO_PATH, this.loaderOptions);
-            const DEmitterGRPCService = grpc.loadPackageDefinition(packageDef).DEmitterGRPCService
             let leader = this.infrastructure.filter((item)=>{ return item.name == this.leader })[0]
             if(!leader){
-                this.election()
-                reject("not leader?")
+                sequential([this.timers.election()]).then(_ => { 
+                    reject("not leader?")    
+                }).catch(err => { })  
             } else {
-                var client = new DEmitterGRPCService(leader.host+":"+leader.port,grpc.credentials.createInsecure());
+                let client = new DEmitterClient(this,leader)
                 let obj = { eventName:eventname, encodedArgs: args }
                 let encrypted = this.encryptor.encrypt(JSON.stringify(obj))
-                client.emit({ _id : new Date().getTime(), source : this.name, hash: encrypted },(error, note) => {
-                    if(error) {
-                        this.logger.debug(leader)
-                        reject(error)
-                    } else {
-                        resolve(note)
-                    }
-                })
+                sequential([client.emit(encrypted)]).then(res => { 
+                    resolve(res[0])    
+                }).catch(err => { })  
             }
         })
-        
     }
     on(eventName,listener){
         this.addListener(eventName, listener)

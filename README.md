@@ -1,4 +1,4 @@
-# d-event-emitter v(0.1.8)
+# d-event-emitter v(0.1.9)
 event emitter using interprocess network layer
 
 ## Installation

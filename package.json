@@ -1,6 +1,6 @@
 {
   "name": "d-event-emitter",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "event emitter using interprocess network layer",
   "main": "index.js",
   "scripts": {
