@@ -1,0 +1,19 @@
+[{
+    "name": "front",
+    "host": "localhost",
+    "port": 65000, 
+    "eligible": true, 
+    "startleader": true 
+},{
+    "name": "agent1",
+    "host": "localhost",
+    "port": 65001,
+    "eligible": true,
+    "startleader": false
+},{
+    "name": "agent2",
+    "host": "localhost",
+    "port": 65002,
+    "eligible": true,
+    "startleader": false
+}]

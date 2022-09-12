@@ -32,6 +32,12 @@ let infraarr = [{
     port: 65001,
     eligible: true,
     startleader: false
+},{
+    name: "test3",
+    host: "localhost",
+    port: 65002,
+    eligible: true,
+    startleader: false
 }]
 
 
@@ -72,8 +78,8 @@ setInterval(()=>{
 
 
 //local emitter events
-/*
-emitter.statusEmitter().on(argv.name+".*",(event) =>{
+
+emitter.statusEmitter().on(argv.name+".election",(event) =>{
     logger.debug(event);
 });
-*/
+

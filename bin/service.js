@@ -79,21 +79,7 @@ class DEmitterService {
         } catch (error) {}
         let founds = []
         if(event1){
-            let tags = this.self.metadataContext.filter((item)=>{
-                let events = Object.keys(item.events)
-                let returnv = false
-                events.forEach((evt)=>{
-                    let comprv = ""
-                    if(evt.endsWith("*")){
-                        comprv = evt.substring(0,evt.length - 1)
-                    } else {
-                        comprv = evt
-                    }
-                    returnv = (event1.eventName.startsWith(comprv))
-                })
-                return returnv
-            })
-            founds = tags.map((item)=>{
+            founds = this.self.infrastructure.map((item)=>{
                 return this.self.infrastructure.filter((item2)=>{
                     return item2.name == item.name
                 })[0]

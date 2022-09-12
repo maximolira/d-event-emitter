@@ -1,0 +1,39 @@
+{
+    "apps" : 
+    [{
+        "name"        : "webserver",
+        "script"      : "./main.js",
+        "watch"       : true,
+        "ignore_watch" : ["node_modules","logs","data"],
+        "env": {
+            "NODE_ENV": "development"
+        },
+        "env_production" : {
+            "NODE_ENV": "production"
+        }
+    },{
+        "name"        : "agent1",
+        "script"      : "./agent1.js",
+        "args"        : "--agent=localagent",
+        "watch"       : true,
+        "ignore_watch" : ["node_modules","logs","data"],
+        "env": {
+            "NODE_ENV": "development"
+        },
+        "env_production" : {
+            "NODE_ENV": "production"
+        }
+    },{
+        "name"        : "agent2",
+        "script"      : "./agent2.js",
+        "args"        : "--agent=localagent",
+        "watch"       : true,
+        "ignore_watch" : ["node_modules","logs","data"],
+        "env": {
+            "NODE_ENV": "development"
+        },
+        "env_production" : {
+            "NODE_ENV": "production"
+        }
+    }]
+}

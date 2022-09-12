@@ -1,0 +1,1 @@
+node .\main.js --name=test3 --trace-uncaught
